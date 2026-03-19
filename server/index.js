@@ -59,6 +59,7 @@ io.on('connection', (socket) => {
     if (room && room.players.length === 2 && room.players[0] === socket.id) {
       room.state = 'drawing';
       room.prompt = prompt;
+      room.donePlayers = new Set();
       io.to(code).emit('game_started', { prompt, roles: room.roles });
     }
   });
@@ -66,6 +67,21 @@ io.on('connection', (socket) => {
   socket.on('draw_line', ({ code, line }) => {
     // Broadcast the drawing line to the OTHER player in the room
     socket.to(code).emit('receive_line', line);
+  });
+
+  socket.on('player_done', (code) => {
+    const room = rooms[code];
+    if (room && room.state === 'drawing') {
+      if (!room.donePlayers) room.donePlayers = new Set();
+      room.donePlayers.add(socket.id);
+      
+      io.to(code).emit('player_done_count', room.donePlayers.size);
+
+      if (room.donePlayers.size === 2) {
+        room.state = 'reveal';
+        io.to(code).emit('reveal_started');
+      }
+    }
   });
 
   socket.on('reveal', (code) => {

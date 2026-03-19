@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import DrawingBoard from '../components/DrawingBoard';
-import { Palette, Eraser, MoveRight } from 'lucide-react';
+import { Palette, Eraser, MoveRight, Check } from 'lucide-react';
 
 export default function Game() {
   const { roomId } = useParams();
@@ -19,6 +19,9 @@ export default function Game() {
   const [size, setSize] = useState(5);
   const [isEraser, setIsEraser] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
+  
+  const [isDone, setIsDone] = useState(false);
+  const [doneCount, setDoneCount] = useState(0);
 
   const colors = ['#F8FAFC', '#F43F5E', '#3B82F6', '#10B981', '#F59E0B'];
 
@@ -34,10 +37,13 @@ export default function Game() {
       setGameState('drawing');
       setPrompt(data.prompt);
       setRole(data.roles[socket.id]);
+      setIsDone(false);
+      setDoneCount(0);
     });
 
     socket.on('reveal_started', () => {
       setGameState('reveal');
+      setTimeLeft(0);
     });
 
     socket.on('player_left', () => {
@@ -50,7 +56,13 @@ export default function Game() {
       setGameState('waiting');
       setPrompt('');
       setTimeLeft(60); // Reset timer, maybe randomize prompt later when we start
+      setIsDone(false);
+      setDoneCount(0);
       if (boardRef.current) boardRef.current.clearCanvas();
+    });
+
+    socket.on('player_done_count', (count) => {
+      setDoneCount(count);
     });
 
     return () => {
@@ -59,6 +71,7 @@ export default function Game() {
       socket.off('reveal_started');
       socket.off('player_left');
       socket.off('game_reset');
+      socket.off('player_done_count');
     };
   }, [navigate]);
 
@@ -161,6 +174,30 @@ export default function Game() {
             >
               <Eraser size={24} />
             </button>
+            <div style={styles.separator} />
+            <button
+              onClick={() => {
+                if(!isDone) {
+                  setIsDone(true);
+                  socket.emit('player_done', roomId);
+                }
+              }}
+              disabled={isDone}
+              style={{
+                ...styles.iconBtn,
+                color: isDone ? 'var(--text-secondary)' : 'var(--text-primary)',
+                background: isDone ? 'rgba(255, 255, 255, 0.05)' : 'var(--accent-primary)',
+                padding: '0 16px',
+                width: 'auto',
+                gap: '8px',
+                opacity: isDone ? 0.6 : 1
+              }}
+            >
+              <Check size={20} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
+                {isDone ? `Waiting (${doneCount}/2)` : 'Done'}
+              </span>
+            </button>
           </div>
           <div style={styles.sliderRow}>
             <input
@@ -182,11 +219,11 @@ export default function Game() {
             TA-DA!
           </h1>
           <p style={{ marginTop: '16px', fontSize: '1.2rem' }}>A true masterpiece.</p>
-          <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
-            <button className="btn-primary" onClick={handleSaveImage}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px', marginTop: '32px', width: '100%' }}>
+            <button className="btn-primary" onClick={handleSaveImage} style={{ flex: '1 1 140px' }}>
               Save to Gallery
             </button>
-            <button className="btn-secondary" onClick={() => socket.emit('play_again', roomId)}>
+            <button className="btn-secondary" onClick={() => socket.emit('play_again', roomId)} style={{ flex: '1 1 140px' }}>
               Play Again
             </button>
           </div>
@@ -304,9 +341,11 @@ const styles = {
     transform: 'translate(-50%, -50%)',
     zIndex: 100,
     textAlign: 'center',
-    padding: '48px',
+    padding: '32px 24px',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center'
+    alignItems: 'center',
+    width: '90%',
+    maxWidth: '400px'
   }
 };
