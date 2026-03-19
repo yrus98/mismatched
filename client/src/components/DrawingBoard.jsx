@@ -3,7 +3,14 @@ import { socket } from '../socket';
 
 const DrawingBoard = forwardRef(({ roomId, role, color, size, gameState }, ref) => {
   useImperativeHandle(ref, () => ({
-    getImage: () => canvasRef.current?.toDataURL('image/png', 1.0)
+    getImage: () => canvasRef.current?.toDataURL('image/png', 1.0),
+    clearCanvas: () => {
+      const canvas = canvasRef.current;
+      const ctx = contextRef.current;
+      if (ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
   }));
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
@@ -167,6 +174,56 @@ const DrawingBoard = forwardRef(({ roomId, role, color, size, gameState }, ref) 
     return {};
   };
 
+  const renderAreaOverlays = () => {
+    if (gameState === 'reveal') return null;
+
+    return (
+      <>
+        {/* Top Area Overlay */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '45%', pointerEvents: 'none',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          background: role === 'bottom' ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px)' : 'transparent',
+          color: role === 'bottom' ? 'var(--text-secondary)' : 'var(--text-primary)',
+          fontSize: '1.2rem',
+          fontWeight: 'bold',
+          opacity: role === 'bottom' ? 0.8 : 0.3,
+          zIndex: role === 'bottom' ? 6 : 4
+        }}>
+          {role === 'bottom' ? "Partner's Area" : "Your Area"}
+        </div>
+
+        {/* Bottom Area Overlay */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', pointerEvents: 'none',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          background: role === 'top' ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px)' : 'transparent',
+          color: role === 'top' ? 'var(--text-secondary)' : 'var(--text-primary)',
+          fontSize: '1.2rem',
+          fontWeight: 'bold',
+          opacity: role === 'top' ? 0.8 : 0.3,
+          zIndex: role === 'top' ? 6 : 4
+        }}>
+          {role === 'top' ? "Partner's Area" : "Your Area"}
+        </div>
+        
+        {/* Obscuring Overlay (Bridge) */}
+        <div 
+          style={{
+            ...getOverlayStyle(),
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: 'none',
+            zIndex: 5
+          }}
+        />
+      </>
+    );
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <canvas
@@ -183,19 +240,7 @@ const DrawingBoard = forwardRef(({ roomId, role, color, size, gameState }, ref) 
           touchAction: 'none' // critical for mobile browsers to prevent pull-to-refresh
         }}
       />
-      {/* Obscuring Overlay */}
-      <div 
-        style={{
-          ...getOverlayStyle(),
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: 'none',
-          zIndex: 5
-        }}
-      />
+      {renderAreaOverlays()}
     </div>
   );
 });

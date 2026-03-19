@@ -72,6 +72,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('play_again', (code) => {
+    const room = rooms[code];
+    if (room && room.state === 'reveal') {
+      room.state = 'lobby';
+      io.to(code).emit('game_reset');
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     // Cleanup simple implementation

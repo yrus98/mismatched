@@ -8,12 +8,12 @@ export default function Game() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const boardRef = useRef(null);
-  
+
   const [gameState, setGameState] = useState('waiting'); // waiting, drawing, reveal
   const [playersCounter, setPlayersCounter] = useState(1);
   const [role, setRole] = useState(null);
   const [prompt, setPrompt] = useState('');
-  
+
   // Drawing Tools State
   const [color, setColor] = useState('#F8FAFC'); // white by default
   const [size, setSize] = useState(5);
@@ -25,7 +25,7 @@ export default function Game() {
   useEffect(() => {
     // If we land here but socket isn't connected or we don't have role
     // we should ideally re-fetch state. For this simple demo, we just rely on socket events.
-    
+
     socket.on('player_joined', (count) => {
       setPlayersCounter(count);
     });
@@ -46,11 +46,19 @@ export default function Game() {
       navigate('/');
     });
 
+    socket.on('game_reset', () => {
+      setGameState('waiting');
+      setPrompt('');
+      setTimeLeft(60); // Reset timer, maybe randomize prompt later when we start
+      if (boardRef.current) boardRef.current.clearCanvas();
+    });
+
     return () => {
       socket.off('player_joined');
       socket.off('game_started');
       socket.off('reveal_started');
       socket.off('player_left');
+      socket.off('game_reset');
     };
   }, [navigate]);
 
@@ -77,7 +85,7 @@ export default function Game() {
 
   const startGame = () => {
     // A daily or random prompt generator
-    const prompts = ["A Fancy Cat in a Spacesuit", "A Dragon Eating Pizza", "A Mermaid on a Skateboard"];
+    const prompts = ["A Fancy Cat in a Spacesuit", "A Dragon Eating Pizza", "A Mermaid on a Skateboard", "A Roller-Skating Octopus", "A Pineapple Bodybuilder", "A Fancy Cactus"];
     const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
     socket.emit('start_game', roomId, randomPrompt);
   };
@@ -117,12 +125,12 @@ export default function Game() {
 
       {/* Canvas Area */}
       <div style={styles.canvasContainer}>
-        <DrawingBoard 
+        <DrawingBoard
           ref={boardRef}
-          roomId={roomId} 
-          role={role} 
-          color={isEraser ? '#0F172A' : color} 
-          size={size} 
+          roomId={roomId}
+          role={role}
+          color={isEraser ? '#0F172A' : color}
+          size={size}
           gameState={gameState}
         />
       </div>
@@ -155,11 +163,11 @@ export default function Game() {
             </button>
           </div>
           <div style={styles.sliderRow}>
-            <input 
-              type="range" 
-              min="2" 
-              max="20" 
-              value={size} 
+            <input
+              type="range"
+              min="2"
+              max="20"
+              value={size}
               onChange={(e) => setSize(parseInt(e.target.value))}
               style={styles.slider}
             />
@@ -178,7 +186,7 @@ export default function Game() {
             <button className="btn-primary" onClick={handleSaveImage}>
               Save to Gallery
             </button>
-            <button className="btn-secondary" onClick={() => navigate('/')}>
+            <button className="btn-secondary" onClick={() => socket.emit('play_again', roomId)}>
               Play Again
             </button>
           </div>
