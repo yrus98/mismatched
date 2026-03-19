@@ -1,0 +1,12 @@
+{
+  "name": "mismatched",
+  "version": "1.0.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=client",
+    "start": "npm start --workspace=server"
+  }
+}
